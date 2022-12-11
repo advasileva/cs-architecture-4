@@ -2,28 +2,44 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-static int counter = 0;
+static int num_of_threads = 3;
+static int itemsOnTable = 0;
+static int targetItems = 6;
+static char *items[] = {
+        "tobacco",
+        "paper",
+        "matches"
+    };
 pthread_mutex_t mutex;
 
-
-typedef struct someArgs_tag {
+typedef struct smokersArgs {
     int id;
-    const char *msg;
-    int out;
-} someArgs_t;
+} smokersArgs_t;
 
-void* exec(void *args) {
-    someArgs_t *arg = (someArgs_t*) args;
-        for(int t; t < 10000000; t++) {
-            
-        }
+void* check(void *args) {
+    smokersArgs_t *arg = (smokersArgs_t*) args;
+    for(int t; t < 10000000; t++) {
+    }
     pthread_mutex_lock(&mutex);
-        if (counter < 2) {
-            counter++;
-            printf("Thread %d: add %s\n", arg->id, arg->msg);
+        if (itemsOnTable + arg->id != targetItems) {
+            printf("Thread %d: skipped, becouse has %s\n", arg->id, items[arg->id - 1]);
         } else {
-            counter = 0;
-            printf("Thread %d: smoke\n", arg->id);
+            printf("Thread %d: smoke with %s\n", arg->id, items[arg->id - 1]);
+            itemsOnTable = 0;
+        }
+    pthread_mutex_unlock(&mutex);
+    return NULL;
+}
+
+void* put(void *args) {
+    for(int t; t < 10000000; t++) {
+    }
+    pthread_mutex_lock(&mutex);
+        if (itemsOnTable == 0) {
+            int first = rand() % num_of_threads;
+            int second = (first  + rand() % (num_of_threads - 1) + 1) % num_of_threads;
+            itemsOnTable = first + second + 2;
+            printf("Broker put %s and %s\n", items[first], items[second]);
         }
     pthread_mutex_unlock(&mutex);
     return NULL;
@@ -31,22 +47,20 @@ void* exec(void *args) {
 
 int main(int argc, char** argv) {
     int num_of_threads = 3;
-    pthread_t threads[num_of_threads];
+    pthread_t smokers_threads[num_of_threads];
+    pthread_t broker_thread;
     size_t i, j;
-    someArgs_t args[num_of_threads];
-    const char *messages[] = {
-        "tobacco",
-        "paper",
-        "matches"
-    };
-    for(j = 0; j < 10; j++) {
+    smokersArgs_t args[num_of_threads];
+    pthread_mutex_init(&mutex, NULL);
+    while(1) {
+        pthread_create(&broker_thread, NULL, put, NULL);
+        pthread_join(broker_thread, NULL);
         for(i = 0; i < num_of_threads; i++) {
-            args[i].id = i;
-            args[i].msg = messages[i];
-            pthread_create(&threads[i], NULL, exec, &args[i]);
+            args[i].id = i + 1;
+            pthread_create(&smokers_threads[i], NULL, check, &args[i]);
         }
         for(i = 0; i < num_of_threads; i++) {
-            pthread_join(threads[i], NULL);
+            pthread_join(smokers_threads[i], NULL);
         }
     }
     pthread_mutex_destroy(&mutex);
