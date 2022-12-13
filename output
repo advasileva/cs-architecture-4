@@ -1,0 +1,11 @@
+Broker put paper and matches
+Thread 3: skipped with matches
+Thread 2: skipped with paper
+Thread 1: smoke with tobacco
+Broker put tobacco and matches
+Thread 3: skipped with matches
+Thread 2: smoke with paper
+Thread 1: skipped with tobacco
+Broker put matches and paper
+Thread 3: skipped with matches
+Thread 2: skipped with paper

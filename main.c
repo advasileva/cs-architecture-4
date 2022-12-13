@@ -11,7 +11,9 @@ static char *items[] = {
         "paper",
         "matches"
     };
-FILE *input, *output;
+static FILE *input, *output;
+static int isFile = 0;
+static char *filename;
 pthread_mutex_t mutex;
 
 typedef struct smokersArgs {
@@ -30,12 +32,18 @@ void* check(void *args) {
     while(1) {
         sleep(arg->check_s);
         pthread_mutex_lock(&mutex);
+            if (isFile == 1) {
+                output = fopen(filename, "a");
+            }
             if (itemsOnTable + arg->id != targetItems) {
                 fprintf(output, "Thread %d: skipped with %s\n", arg->id, items[arg->id - 1]);
             } else {
                 fprintf(output, "Thread %d: smoke with %s\n", arg->id, items[arg->id - 1]);
                 sleep(arg->smoke_s);
                 itemsOnTable = 0;
+            }
+            if (isFile == 1) {
+                fclose(output);
             }
         pthread_mutex_unlock(&mutex);
     }
@@ -50,8 +58,14 @@ void* put(void *args) {
                 int first = rand() % num_of_threads;
                 int second = (first  + rand() % (num_of_threads - 1) + 1) % num_of_threads;
                 itemsOnTable = first + second + 2;
+                if (isFile == 1) {
+                    output = fopen(filename, "a");
+                }
                 fprintf(output, "Broker put %s and %s\n", items[first], items[second]);
                 sleep(arg->put_s);
+                if (isFile == 1) {
+                    fclose(output);
+                }
             }
         pthread_mutex_unlock(&mutex);
     }
@@ -72,14 +86,13 @@ int main(int argc, char** argv) {
         put_s = atoi(argv[4]);
         output = stdout;
     } else if (atoi(argv[1]) == 1) {
+        isFile = 1;
         input = fopen(argv[2], "r");
-        output = fopen(argv[3], "a");
+        filename = argv[3];
         fscanf(input, "%d", &check_s);
         fscanf(input, "%d", &smoke_s);
         fscanf(input, "%d", &put_s);
-        printf("check_s: %d\n", check_s);
-        printf("smoke_s: %d\n", smoke_s);
-        printf("put_s: %d\n", put_s);
+        fclose(input);
     } else {
         check_s = rand() % 20;
         smoke_s = rand() % 20;
